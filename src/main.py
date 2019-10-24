@@ -55,7 +55,7 @@ def filter_image(img):
     # Convert to greyscale
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     # Get edge map
-    edges = cv2.Canny(gray, 50, 150, apertureSize=3)
+    edges = cv2.Canny(gray, 100, 200, apertureSize=3)
     # Dilate edge map to fill holes
     dilatation_kernel = np.ones((5,5), np.uint8)
     dilated = cv2.dilate(edges, dilatation_kernel, iterations=1)
@@ -131,7 +131,6 @@ if __name__ == '__main__':
     erase_axis_points(filtered, first_axis, second_axis)
     adjust_axis(first_axis, second_axis)
     draw_axis(img, first_axis, second_axis)
-
     cv2.imshow("Image", img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
