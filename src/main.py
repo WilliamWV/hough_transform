@@ -120,8 +120,8 @@ def adjust_axis(first_axis, second_axis):
 
 def draw_axis(img, first_axis, second_axis):
     axis_width = 2
-    draw__hough_line(img, first_axis, (0, 255, 0), axis_width)
-    draw__hough_line(img, second_axis, (0, 255, 0), axis_width)
+    draw__hough_line(img, first_axis, (255, 0, 0), axis_width)
+    draw__hough_line(img, second_axis, (255, 0, 0), axis_width)
 
 
 if __name__ == '__main__':
