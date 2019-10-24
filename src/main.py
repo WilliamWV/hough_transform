@@ -2,9 +2,16 @@ import cv2
 import numpy as np
 import argparse
 
+# Usage:
+# $ python main.py -i img_path
+# ex:
+# $ python main.py -i ../exemplo1.jpg
+
 
 # Auxiliar functions
 
+# Draw a line parametrized as: rho = x*cos(theta) + y*cos(theta)
+# line = [rho, theta]
 def draw__hough_line(image, line, color, width):
     theta = line[1]
     rho = line[0]
@@ -20,6 +27,7 @@ def draw__hough_line(image, line, color, width):
     cv2.line(image, (x1, y1), (x2, y2), color, width)
 
 
+# Find the point where two lines cross each other
 def cross_point(hough_1, hough_2):
     rho1 = hough_1[0]
     theta1 = hough_1[1]
@@ -44,26 +52,33 @@ def parse_input_img():
 
 
 def filter_image(img):
+    # Convert to greyscale
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # Get edge map
     edges = cv2.Canny(gray, 50, 150, apertureSize=3)
+    # Dilate edge map to fill holes
     dilatation_kernel = np.ones((5,5), np.uint8)
     dilated = cv2.dilate(edges, dilatation_kernel, iterations=1)
     return dilated
 
 
 def get_axis(img):
+    # precisions of the Hough transform
     rho_precision = 1
     theta_precision = 2 * np.pi/180
+    # min number of votes to be considered a line
     votes_thresh = 150
     lines = cv2.HoughLines(img, rho_precision, theta_precision, votes_thresh)
     first_axis = []
     second_axis = []
 
+    # angle tolerance between the axis
     axis_thresh = np.pi/20.0
 
     l = 0
     while len(first_axis) == 0 or len(second_axis) == 0 or l >= len(lines):
         for rho, theta in lines[l]:
+            # consider that the most voted line must be one of the axis
             if l == 0:
                 first_axis = [rho, theta]
             elif abs(abs(first_axis[1] - theta) - np.pi/2.0) < axis_thresh:
@@ -77,12 +92,15 @@ def get_axis(img):
     return first_axis, second_axis
 
 
+# Draw black lines on the filtered image to erase the influence of the axis
+# on further processing
 def erase_axis_points(img, first_axis, second_axis):
     erase_width = 20
     draw__hough_line(img, first_axis, (0, 0, 0), erase_width)
     draw__hough_line(img, second_axis, (0, 0, 0), erase_width)
 
-
+# slightly change the axis so that they are orthogonals and maintain the same
+# crossing point
 def adjust_axis(first_axis, second_axis):
     x, y = cross_point(first_axis, second_axis)
     angle_diff = abs(first_axis[1] - second_axis[1])
