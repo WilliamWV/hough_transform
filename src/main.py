@@ -1,5 +1,9 @@
 import cv2
 import numpy as np
+import argparse
+
+
+# Auxiliar functions
 
 def draw__hough_line(image, line, color, width):
     theta = line[1]
@@ -15,6 +19,7 @@ def draw__hough_line(image, line, color, width):
 
     cv2.line(image, (x1, y1), (x2, y2), color, width)
 
+
 def cross_point(hough_1, hough_2):
     rho1 = hough_1[0]
     theta1 = hough_1[1]
@@ -28,74 +33,87 @@ def cross_point(hough_1, hough_2):
     return x, y
 
 
-img_path = '../exemplo3.jpg'
-rho_precision = 1
-theta_precision = 2 * np.pi/180
+# Main pipeline functions
 
-img = cv2.imread(img_path)
-gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-edges = cv2.Canny(gray, 50, 150, apertureSize=3)
-kernel = np.ones((5,5), np.uint8)
-dilated = cv2.dilate(edges, kernel, iterations=1)
-cv2.imshow("Dilated", dilated)
+def parse_input_img():
+    parser = argparse.ArgumentParser(description='Receive image')
+    parser.add_argument('-i', '--img', required=True, type=str, help='Input image path')
+    args = parser.parse_args()
+    img = cv2.imread(args.img)
+    return img
 
 
-lines = cv2.HoughLines(dilated, rho_precision, theta_precision, 150)
-first_axis = []
-second_axis = []
-
-axis_thresh = np.pi/20.0
-
-l = 0
-while len(first_axis) == 0 or len(second_axis) == 0:
-    for rho, theta in lines[l]:
-        print("Rho: " + str(rho) + "; Theta: " + str(theta))
-        if l == 0:
-            first_axis = [rho, theta]
-            print("First axis = " + str(first_axis))
-        elif abs(abs(first_axis[1] - theta) - np.pi/2.0) < axis_thresh:
-            second_axis = [rho, theta]
-            print("Second axis = " + str(second_axis))
-
-    l+=1
-
-x, y = cross_point(first_axis, second_axis)
-
-draw__hough_line(dilated, first_axis, (0, 0, 0), 20)
-draw__hough_line(dilated, second_axis, (0, 0, 0), 20)
-
-draw__hough_line(img, first_axis, (0, 0, 255), 2)
-draw__hough_line(img, second_axis, (0, 0, 255), 2)
-
-angle_diff = abs(first_axis[1] - second_axis[1])
-angle_change = np.pi/2.0 - angle_diff
-smaller = first_axis
-bigger = second_axis
-if first_axis[1] > second_axis[1]:
-    smaller = second_axis
-    bigger = first_axis
-
-smaller[1] -= angle_change/2
-bigger[1] += angle_change/2
-
-first_axis[0] = x * np.cos(first_axis[1]) + y * np.sin(first_axis[1])
-second_axis[0] = x * np.cos(second_axis[1]) + y * np.sin(second_axis[1])
+def filter_image(img):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    edges = cv2.Canny(gray, 50, 150, apertureSize=3)
+    dilatation_kernel = np.ones((5,5), np.uint8)
+    dilated = cv2.dilate(edges, dilatation_kernel, iterations=1)
+    return dilated
 
 
+def get_axis(img):
+    rho_precision = 1
+    theta_precision = 2 * np.pi/180
+    votes_thresh = 150
+    lines = cv2.HoughLines(img, rho_precision, theta_precision, votes_thresh)
+    first_axis = []
+    second_axis = []
+
+    axis_thresh = np.pi/20.0
+
+    l = 0
+    while len(first_axis) == 0 or len(second_axis) == 0 or l >= len(lines):
+        for rho, theta in lines[l]:
+            if l == 0:
+                first_axis = [rho, theta]
+            elif abs(abs(first_axis[1] - theta) - np.pi/2.0) < axis_thresh:
+                second_axis = [rho, theta]
+        l+=1
+
+    if l >= len(lines):
+        print("Couldn't find the axis")
+        exit()
+
+    return first_axis, second_axis
 
 
-print("Smaller: " + str(smaller))
-print("Bigger: " + str(bigger))
-
-print("First: " + str(first_axis))
-print("Second: " + str(second_axis))
-
-
-draw__hough_line(img, first_axis, (0, 255, 0), 2)
-draw__hough_line(img, second_axis, (0, 255, 0), 2)
+def erase_axis_points(img, first_axis, second_axis):
+    erase_width = 20
+    draw__hough_line(img, first_axis, (0, 0, 0), erase_width)
+    draw__hough_line(img, second_axis, (0, 0, 0), erase_width)
 
 
-cv2.imshow("Erased axis", dilated)
-cv2.imshow("Image", img)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+def adjust_axis(first_axis, second_axis):
+    x, y = cross_point(first_axis, second_axis)
+    angle_diff = abs(first_axis[1] - second_axis[1])
+    angle_change = np.pi/2.0 - angle_diff
+    smaller = first_axis
+    bigger = second_axis
+    if first_axis[1] > second_axis[1]:
+        smaller = second_axis
+        bigger = first_axis
+
+    smaller[1] -= angle_change/2
+    bigger[1] += angle_change/2
+
+    first_axis[0] = x * np.cos(first_axis[1]) + y * np.sin(first_axis[1])
+    second_axis[0] = x * np.cos(second_axis[1]) + y * np.sin(second_axis[1])
+
+
+def draw_axis(img, first_axis, second_axis):
+    axis_width = 2
+    draw__hough_line(img, first_axis, (0, 255, 0), axis_width)
+    draw__hough_line(img, second_axis, (0, 255, 0), axis_width)
+
+
+if __name__ == '__main__':
+    img = parse_input_img()
+    filtered = filter_image(img)
+    first_axis, second_axis = get_axis(filtered)
+    erase_axis_points(filtered, first_axis, second_axis)
+    adjust_axis(first_axis, second_axis)
+    draw_axis(img, first_axis, second_axis)
+
+    cv2.imshow("Image", img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
