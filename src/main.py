@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import argparse
 from collections import defaultdict
+import imutils
 
 # Usage:
 # $ python main.py -i img_path
@@ -129,17 +130,34 @@ def draw_axis(img, first_axis, second_axis):
     draw__hough_line(img, first_axis, (255, 0, 0), axis_width)
     draw__hough_line(img, second_axis, (255, 0, 0), axis_width)
 
-def draw_parabola(img, first_axis, second_axis, xo, yo, p):
+def draw_parabola(img, first_axis, second_axis, xo, yo, p, rotation):
+    rad_angle = np.pi * rotation / 180.0
     xorigin, yorigin = int_cross_point(first_axis, second_axis)
     width = img.shape[1]
+    height = img.shape[0]
 
+    points = []
     for x in range(-xorigin, width - xorigin):
         try: # Catch division by 0
             y = int(((x-xo)**2) / (4*p)) - yo
             xpixel, ypixel = x + xorigin, y + yorigin
-            cv2.circle(img, (xpixel, ypixel), 3, (0, 255, 0), 3)
+            points.append((xpixel, ypixel))
         except:
             pass
+
+
+
+    points = [
+        (
+            int((point[0] - width/2)* np.cos(rad_angle) - (point[1] - height/2)*np.sin(rad_angle) + width/2) ,
+            int((point[0] - width/2) * np.sin(rad_angle) + (point[1] - height/2)*np.cos(rad_angle) + height/2)
+        )
+        for point in points
+    ]
+
+    for point in points:
+        cv2.circle(img, (point[0], point[1]), 3, (0, 255, 0), 3)
+
 
 def find_most_voted_parabola(acc, height, width):
     highest_votes = 0
@@ -197,6 +215,12 @@ def get_parabola(img, first_axis, second_axis):
 
     return x, y, p
 
+def get_angles_to_rotate(first_axis, second_axis):
+    horizontal = first_axis[1]
+    if first_axis[1] - second_axis[1] == np.pi/2:
+        horizontal = second_axis[1]
+
+    return - (np.pi/2 - horizontal) * (180/np.pi)
 
 if __name__ == '__main__':
     img = parse_input_img()
@@ -206,11 +230,14 @@ if __name__ == '__main__':
     erase_axis_points(filtered, first_axis, second_axis)
     adjust_axis(first_axis, second_axis)
     draw_axis(img, first_axis, second_axis)
+    # Rotation handling
+    angles = get_angles_to_rotate(first_axis, second_axis)
+    rotated = imutils.rotate(filtered, angles)
     # Parabola handling
-    x, y, p = get_parabola(filtered, first_axis, second_axis)
-    draw_parabola(img, first_axis, second_axis, x, y, p)
+    x, y, p = get_parabola(rotated, first_axis, second_axis)
+    rotated = cv2.cvtColor(rotated, cv2.COLOR_GRAY2BGR)
+    draw_parabola(img, first_axis, second_axis, x, y, p, angles)
     # Show result image
     cv2.imshow("Result", img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
-    
