@@ -235,7 +235,6 @@ if __name__ == '__main__':
     rotated = imutils.rotate(filtered, angles)
     # Parabola handling
     x, y, p = get_parabola(rotated, first_axis, second_axis)
-    rotated = cv2.cvtColor(rotated, cv2.COLOR_GRAY2BGR)
     draw_parabola(img, first_axis, second_axis, x, y, p, angles)
     # Show result image
     cv2.imshow("Result", img)
