@@ -220,7 +220,19 @@ def get_angles_to_rotate(first_axis, second_axis):
     if first_axis[1] - second_axis[1] == np.pi/2:
         horizontal = second_axis[1]
 
-    return - (np.pi/2 - horizontal) * (180/np.pi)
+    return (np.pi/2 - horizontal) * (180/np.pi)
+
+
+def print_parabola_equation(x, y, p, angles):
+    # It is needed to apply '-' once, in the image, the (0,0) is on top-left, so the signal of p is inverted
+    p = -p
+    a = 1 / (4*p)
+    b = (-2*x)/(4*p)
+    c = (x**2)/(4*p) + y
+
+    print('Parabola equation found: {:.3f}x^2 + {:.3f}x + {:.3f}'.format(a, b, c))
+    print('The parabola is rotated by {:.0f} degrees'.format(angles))
+
 
 if __name__ == '__main__':
     img = parse_input_img()
@@ -232,10 +244,11 @@ if __name__ == '__main__':
     draw_axis(img, first_axis, second_axis)
     # Rotation handling
     angles = get_angles_to_rotate(first_axis, second_axis)
-    rotated = imutils.rotate(filtered, angles)
+    rotated = imutils.rotate(filtered, - angles)
     # Parabola handling
     x, y, p = get_parabola(rotated, first_axis, second_axis)
-    draw_parabola(img, first_axis, second_axis, x, y, p, angles)
+    draw_parabola(img, first_axis, second_axis, x, y, p, - angles)
+    print_parabola_equation(x, y, p, angles)
     # Show result image
     cv2.imshow("Result", img)
     cv2.waitKey(0)
